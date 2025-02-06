@@ -7,7 +7,13 @@
     <style>
         #map {
             width: 100%;
-            height: 600px;
+            height: 400px; /* Уменьшаем высоту карты */
+        }
+        #search-form {
+            margin-bottom: 10px;
+        }
+        #cafe-info {
+            margin-top: 10px;
         }
         .info-window {
             max-width: 250px;
@@ -22,11 +28,30 @@
     </style>
 </head>
 <body>
+
+    <form id="search-form">
+        <input type="text" id="cafe-name" placeholder="Введите название кафе">
+        <select id="cafe-type">
+            <option value="">Все типы</option>
+            <option value="restaurant">Ресторан</option>
+            <option value="cafe">Кафе</option>
+            <option value="bar">Бар</option>
+        </select>
+        <button type="button" onclick="searchCafes()">Поиск</button>
+        <button type="button" onclick="sortByDistance()">Сортировать по расстоянию</button>
+    </form>
+
     <div id="map"></div>
+
+    <div id="cafe-info">
+        <h3>Информация о кафе</h3>
+        <div id="cafe-details"></div>
+    </div>
 
     <script>
         let userPlacemark;
         let map;
+        let cafesData = []; // Массив для хранения данных о кафе
 
         function init() {
             map = new ymaps.Map('map', {
@@ -34,6 +59,7 @@
                 zoom: 14
             });
 
+            // Получаем геолокацию пользователя
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     position => {
@@ -45,9 +71,10 @@
                         });
                         map.geoObjects.add(userPlacemark);
 
-                        searchCafes(userLocation);
+                        searchCafes(userLocation); // Ищем кафе рядом с пользователем
                     },
                     error => {
+                        // Обрабатываем ошибку геолокации
                         let errorMessage;
                         switch (error.code) {
                             case error.PERMISSION_DENIED:
@@ -72,43 +99,88 @@
         }
 
         function searchCafes(location) {
+            const cafeName = document.getElementById('cafe-name').value;
+            const cafeType = document.getElementById('cafe-type').value;
+
             ymaps.geocode(location, {
                 kind: 'cafe',
                 results: 50
             }).then(res => {
-                const cafes = res.geoObjects.toArray()
+                cafesData = res.geoObjects.toArray() // Сохраняем данные о кафе
                     .filter(cafe => cafe.properties.get('name'))
-                    .sort((a, b) => {
-                        const ratingA = a.properties.get('rating') || 0;
-                        const ratingB = b.properties.get('rating') || 0;
-                        return ratingB - ratingA;
+                    .filter(cafe => { // Фильтруем по типу кафе
+                        if (cafeType) {
+                            return cafe.properties.get('type') === cafeType;
+                        }
+                        return true;
                     })
-                    .slice(0, 10);
-
-                cafes.forEach(cafe => {
-                    const rating = cafe.properties.get('rating') || 'нет оценки';
-                    const name = cafe.properties.get('name');
-                    const address = cafe.properties.get('description');
-
-                    const placemark = new ymaps.Placemark(cafe.geometry.getCoordinates(), {
-                        balloonContent: `
-                            <div class="info-window">
-                                <h3>${name}</h3>
-                                <p>${address}</p>
-                                <p>Рейтинг: ${rating}</p>
-                                <button onclick="buildRoute(${cafe.geometry.getCoordinates()})">
-                                    Построить маршрут
-                                </button>
-                            </div>
-                        `
+                    .filter(cafe => { // Фильтруем по названию
+                        if (cafeName) {
+                            return cafe.properties.get('name').toLowerCase().includes(cafeName.toLowerCase());
+                        }
+                        return true;
                     });
 
-                    map.geoObjects.add(placemark);
-                });
+                displayCafes(cafesData); // Отображаем отфильтрованные кафе
             }).catch(error => {
                 console.error("Ошибка поиска кафе:", error);
                 alert("Произошла ошибка при поиске кафе. Попробуйте позже.");
             });
+        }
+
+        function displayCafes(cafes) {
+            map.geoObjects.removeAll(); // Очищаем карту от предыдущих меток
+
+            cafes.slice(0, 10).forEach(cafe => { // Отображаем не более 10 кафе
+                const rating = cafe.properties.get('rating') || 'нет оценки';
+                const name = cafe.properties.get('name');
+                const address = cafe.properties.get('description');
+
+                const placemark = new ymaps.Placemark(cafe.geometry.getCoordinates(), {
+                    balloonContent: `
+                        <div class="info-window">
+                            <h3>${name}</h3>
+                            <p>${address}</p>
+                            <p>Рейтинг: ${rating}</p>
+                            <button onclick="buildRoute(${cafe.geometry.getCoordinates()})">
+                                Построить маршрут
+                            </button>
+                        </div>
+                    `
+                });
+
+                placemark.events.add('click', function() {
+                    showCafeInfo(cafe);
+                });
+
+                map.geoObjects.add(placemark);
+            });
+        }
+
+        function searchCafesByName() {
+            searchCafes(userPlacemark.geometry.getCoordinates());
+        }
+
+        function sortByDistance() {
+            cafesData.sort((a, b) => {
+                const distanceA = ymaps.coordSystem.distance(userPlacemark.geometry.getCoordinates(), a.geometry.getCoordinates());
+                const distanceB = ymaps.coordSystem.distance(userPlacemark.geometry.getCoordinates(), b.geometry.getCoordinates());
+                return distanceA - distanceB;
+            });
+
+            displayCafes(cafesData);
+        }
+
+        function showCafeInfo(cafe) {
+            const cafeDetails = document.getElementById('cafe-details');
+            cafeDetails.innerHTML = `
+                <h3>${cafe.properties.get('name')}</h3>
+                <p>${cafe.properties.get('description')}</p>
+                <p>Рейтинг: ${cafe.properties.get('rating') || 'нет оценки'}</p>
+                <button onclick="buildRoute(${cafe.geometry.getCoordinates()})">
+                    Построить маршрут
+                </button>
+            `;
         }
 
         function buildRoute(targetCoordinates) {
@@ -125,5 +197,6 @@
 
         ymaps.ready(init);
     </script>
+
 </body>
 </html>
