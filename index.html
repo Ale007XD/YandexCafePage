@@ -1,13 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Поиск ближайших кафе</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=AQVNznkv2cu-WerDTScb2YWsVBcomNIjvkzb9Tmy" type="text/javascript"></script>
+    <title>Поиск кафе</title>
+    <meta charset="utf-8">
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=ВAQVNznkv2cu-WerDTScb2YWsVBcomNIjvkzb9Tmy&lang=ru_RU"></script>
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+        }
+        .info-window {
+            max-width: 200px;
+        }
+    </style>
 </head>
 <body>
-    <div id="map" style="width: 100%; height: 400px;"></div>
-    <script src="script.js"></script>
+    <div id="map"></div>
+
+    <script>
+        function init() {
+            // Инициализация карты
+            const map = new ymaps.Map('map', {
+                center: [55.75, 37.62], // Москва по умолчанию
+                zoom: 14
+            });
+
+            // Получение геопозиции пользователя
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        const userLocation = [position.coords.latitude, position.coords.longitude];
+                        map.setCenter(userLocation);
+                        
+                        // Поиск кафе
+                        ymaps.geocode(userLocation, {
+                            kind: 'cafe',
+                            results: 50
+                        }).then(res => {
+                            const cafes = res.geoObjects.toArray()
+                                .filter(cafe => cafe.properties.get('name'))
+                                .sort((a, b) => 
+                                    b.properties.get('rating') - a.properties.get('rating'))
+                                .slice(0, 3);
+
+                            // Добавление меток кафе
+                            cafes.forEach(cafe => {
+                                const rating = cafe.properties.get('rating') || 'нет оценки';
+                                const name = cafe.properties.get('name');
+                                const address = cafe.properties.get('description');
+                                
+                                const placemark = new ymaps.Placemark(cafe.geometry.getCoordinates(), {
+                                    balloonContent: `
+                                        <div class="info-window">
+                                            <h3>${name}</h3>
+                                            <p>${address}</p>
+                                            <p>Рейтинг: ${rating}</p>
+                                            <button onclick="buildRoute(${cafe.geometry.getCoordinates()})">
+                                                Построить маршрут
+                                            </button>
+                                        </div>
+                                    `
+                                });
+                                
+                                map.geoObjects.add(placemark);
+                            });
+                        });
+                    },
+                    error => {
+                        alert('Для работы приложения разрешите доступ к геолокации');
+                    }
+                );
+            }
+        }
+
+        // Функция построения маршрута
+        function buildRoute(targetCoordinates) {
+            ymaps.route([
+                map.geoObjects.get(0).geometry.getCoordinates(), // Текущее положение
+                targetCoordinates
+            ]).then(route => {
+                map.geoObjects.add(route);
+            });
+        }
+
+        // Инициализация приложения
+        ymaps.ready(init);
+    </script>
 </body>
 </html>
