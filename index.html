@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Поиск ближайших кафе</title>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=YOUR_API_KEY" type="text/javascript"></script>
+    <script src="script.js" type="text/javascript"></script>
+    <style>
+        #map {
+            width: 600px;
+            height: 400px;
+        }
+        #cafe-info {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <button onclick="findNearestCafes()">Найти ближайшие кафе</button>
+    <div id="cafe-info"></div>
+</body>
+</html>
