@@ -10,9 +10,8 @@
             height: 600px;
         }
         .info-window {
-            max-width: 250px; /* Увеличил ширину информационного окна */
+            max-width: 250px;
         }
-        /* Стили для кнопки */
         .info-window button {
             padding: 5px 10px;
             background-color: #4CAF50;
@@ -26,8 +25,8 @@
     <div id="map"></div>
 
     <script>
-        let userPlacemark; // Для хранения placemark пользователя
-        let map; // Для доступа к карте из buildRoute
+        let userPlacemark;
+        let map;
 
         function init() {
             map = new ymaps.Map('map', {
@@ -42,7 +41,7 @@
                         map.setCenter(userLocation);
 
                         userPlacemark = new ymaps.Placemark(userLocation, {}, {
-                            iconColor: 'blue' // Синий цвет для placemark пользователя
+                            iconColor: 'blue'
                         });
                         map.geoObjects.add(userPlacemark);
 
@@ -65,7 +64,6 @@
                                 break;
                         }
                         alert("Ошибка геолокации: " + errorMessage);
-                        // Возможность предложить пользователю выбрать местоположение на карте
                     }
                 );
             } else {
@@ -85,7 +83,7 @@
                         const ratingB = b.properties.get('rating') || 0;
                         return ratingB - ratingA;
                     })
-                    .slice(0, 10); // Увеличил количество отображаемых кафе
+                    .slice(0, 10);
 
                 cafes.forEach(cafe => {
                     const rating = cafe.properties.get('rating') || 'нет оценки';
@@ -115,11 +113,9 @@
 
         function buildRoute(targetCoordinates) {
             ymaps.route([
-                userPlacemark.geometry.getCoordinates(), // Используем сохраненный placemark пользователя
+                userPlacemark.geometry.getCoordinates(),
                 targetCoordinates
-            ], {
-                // options for route
-            }).then(route => {
+            ]).then(route => {
                 map.geoObjects.add(route);
             }).catch(error => {
                 console.error("Ошибка построения маршрута:", error);
